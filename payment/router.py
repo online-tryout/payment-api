@@ -1,44 +1,77 @@
 from fastapi import APIRouter, Depends, Form, HTTPException, Response, UploadFile
-from sqlalchemy.orm import Session
 from supabase import Client, StorageException
 
-from database import get_db, get_supabase
-from payment import schema, crud
+from database import get_supabase, post, get
+from payment import schema
 
 router = APIRouter()
 
 
 @router.get("/transaction/", response_model=schema.Transaction)
-async def get_transaction(transaction_id: str, db: Session = Depends(get_db)):
-    transaction = crud.get_transaction(db, transaction_id)
-    if transaction is None:
-        raise HTTPException(status_code=404, detail="Transaction not found")
-    return transaction
+async def get_transaction(transaction_id: str):
+    try:
+        return get("api/db/payment/transaction", {"transaction_id": transaction_id})
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+@router.get("/transaction/detail/", response_model=schema.TransactionDetail)
+async def get_transaction_detail(transaction_id: str):
+    try:
+        transaction = get("api/db/payment/transaction", {"transaction_id": transaction_id})
+        tryout = get("api/db/tryout/tryout", {"tryout_id": str(transaction["tryout_id"])})
+
+        transaction["transaction_id"] = transaction["id"]
+        transaction["tryout_name"] = tryout["title"]
+        transaction["bank"] = "BCA"
+        transaction["account_number"] = "1234567890"
+
+        return transaction
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/transactions/", response_model=list[schema.Transaction])
-async def get_transactions(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return crud.get_transactions(db, skip=skip, limit=limit)
+async def get_transactions(skip: int = 0, limit: int = 100):
+    try:
+        return get("api/db/payment/transactions", {"skip": skip, "limit": limit})
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/transactions/user/", response_model=list[schema.Transaction])
-async def get_transactions_by_user(user_id: str, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return crud.get_transactions_by_user(db, user_id, skip=skip, limit=limit)
+async def get_transactions_by_user(user_id: str, skip: int = 0, limit: int = 100):
+    try:
+        return get("api/db/payment/transactions/user", {"user_id": user_id, "skip": skip, "limit": limit})
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/transactions/tryout/", response_model=list[schema.Transaction])
-async def get_transactions_by_tryout(tryout_id: str, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return crud.get_transactions_by_tryout(db, tryout_id, skip=skip, limit=limit)
+async def get_transactions_by_tryout(tryout_id: str, skip: int = 0, limit: int = 100):
+    try:
+        return get("api/db/payment/transactions/tryout", {"tryout_id": tryout_id, "skip": skip, "limit": limit})
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/transaction/", response_model=schema.Transaction)
-async def create_transaction(transaction: schema.TransactionCreate, db: Session = Depends(get_db)):
-    transaction = crud.create_transaction(db, transaction)
+async def create_transaction(transaction: schema.TransactionCreate):
+    try:
+        data = transaction.model_dump()
+        data["tryout_id"] = str(data["tryout_id"])
+        data["user_id"] = str(data["user_id"])
+        return post("api/db/payment/transaction", data)
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.put("/transaction/", response_model=schema.Transaction)
-async def update_transaction(transaction_id: str, updated_transaction: schema.TransactionCreate, db: Session = Depends(get_db)):
-    return crud.update_transaction(db, transaction_id, updated_transaction)
+async def update_transaction(transaction_id: str, updated_transaction: schema.TransactionCreate):
+    try:
+        return post(f"api/db/payment/transaction/{transaction_id}", updated_transaction.model_dump())
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/proof/", responses={200: {"content": {"image/png": {}}}})
@@ -55,7 +88,7 @@ async def upload_proof_of_payment(file: UploadFile, tid: str = Form(...), supaba
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload an image file")
     
-    transaction = crud.get_transaction(tid)
+    transaction = await get("transaction", {"transaction_id": tid})
     if transaction is None:
         raise HTTPException(status_code=404, detail="Transaction not found")
 

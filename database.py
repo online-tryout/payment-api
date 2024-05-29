@@ -1,30 +1,43 @@
+import json
 import os
+import uuid
+import requests
+
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
 from supabase import create_client, Client
+
 
 load_dotenv()
 
-SQLALCHEMY_DATABASE_URL: str = os.getenv("DB_URL")
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL
-)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-        
-
-SUPABASE_URL: str = os.getenv("SUPABASE_URL")
-SUPABASE_KEY: str = os.getenv("SUPABASE_KEY")
+SUPABASE_URL: str = os.getenv("PAYMENT_SUPABASE_URL")
+SUPABASE_KEY: str = os.getenv("PAYMENT_SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def get_supabase():
     return supabase
+
+
+DB_SERVICE_URL: str = os.getenv("DB_SERVICE_URL")
+
+class UUIDEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, uuid.UUID):
+            return str(obj)
+        return json.JSONEncoder.default(self, obj)
+    
+
+def post(path: str, data: dict):
+    url = f"{DB_SERVICE_URL}/{path}"
+    try:
+        response = requests.post(url, json=data)
+        return response.json()
+    except Exception as e:
+        raise ValueError(str(e))
+
+def get(path: str, params: dict):
+    url = f"{DB_SERVICE_URL}/{path}"
+    try:
+        response = requests.get(url, params=params)
+        return response.json()
+    except Exception as e:
+        raise ValueError(str(e))
