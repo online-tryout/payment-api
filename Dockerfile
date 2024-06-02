@@ -6,10 +6,14 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY requirements.txt /app/
 
-RUN pip install -r requirements.txt
+RUN pip install --upgrade pip && pip install -r requirements.txt
 
-COPY . .
+COPY .env /app/
+
+COPY . /app/
+
+EXPOSE 8084
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8084"]
