@@ -7,6 +7,6 @@ app = FastAPI()
 app.include_router(router, prefix="/api/payment", tags=["payment"])
 
 
-@app.get("/")
+@app.get("/api/payment/health/")
 async def main():
     return {"message" : "Server is running"}
