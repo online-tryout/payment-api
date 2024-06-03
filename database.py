@@ -27,7 +27,7 @@ class UUIDEncoder(json.JSONEncoder):
     
 
 def post(path: str, data: dict):
-    url = f"{DB_SERVICE_URL}/{path}"
+    url = f"{DB_SERVICE_URL}/payment/{path}"
     try:
         response = requests.post(url, json=data)
         return response.json()
@@ -35,7 +35,7 @@ def post(path: str, data: dict):
         raise ValueError(str(e))
 
 def get(path: str, params: dict):
-    url = f"{DB_SERVICE_URL}/{path}"
+    url = f"{DB_SERVICE_URL}/payment/{path}"
     try:
         response = requests.get(url, params=params)
         return response.json()
