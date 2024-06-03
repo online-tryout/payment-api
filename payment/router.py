@@ -1,12 +1,14 @@
 import json
-from fastapi import APIRouter, Depends, Form, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile
 from supabase import Client, StorageException
 
 from database import get_supabase, post, get, put
 from payment import schema
+from payment.websocket import manager
 
 router = APIRouter()
-
+BANK = "BCA"
+ACCOUNT_NUMBER = "1234567890"
 
 @router.get("/transaction/{transaction_id}", response_model=schema.Transaction)
 async def get_transaction(transaction_id: str):
@@ -29,8 +31,8 @@ async def get_transaction_detail(transaction_id: str):
 
         transaction["transaction_id"] = transaction["id"]
         transaction["tryout_name"] = tryout["title"]
-        transaction["bank"] = "BCA"
-        transaction["account_number"] = "1234567890"
+        transaction["bank"] = BANK
+        transaction["account_number"] = ACCOUNT_NUMBER
 
         return transaction
     except ValueError as e:
@@ -67,7 +69,17 @@ async def create_transaction(transaction: schema.TransactionCreate):
         data = transaction.model_dump()
         data["tryout_id"] = str(data["tryout_id"])
         data["user_id"] = str(data["user_id"])
-        return post("payment/transaction", data)
+        response = post("payment/transaction", data)
+        if response is None:
+            raise HTTPException(status_code=400, detail="Failed to create transaction")
+        
+        tryout = get(f"tryout/{data['tryout_id']}")
+        response["tryout_name"] = tryout["title"]
+        response["bank"] = BANK
+        response["account_number"] = ACCOUNT_NUMBER
+        
+        await manager.send_message(json.dumps(response))
+        return response
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
