@@ -16,6 +16,7 @@ jobs:
           username: ${{ secrets.SSH_USERNAME_PROD }}
           key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
           port: 22
+          command_timeout: 20m
           script: |
             cd /home/indramhrt/deployment-master
             git pull origin main
