@@ -24,3 +24,10 @@ class TransactionDetail(Transaction):
     tryout_name: str
     bank: str
     account_number: str
+
+class TransactionIntent(BaseModel):
+    tryout_id: uuid.UUID
+    tryout_name: str
+    amount: float
+    bank: str
+    account_number: str

@@ -39,6 +39,24 @@ async def get_transaction_detail(transaction_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/intent/{tryout_id}", response_model=schema.TransactionIntent)
+async def get_transaction_intent(tryout_id: str):
+    try:
+        tryout = get(f"tryout/{tryout_id}")
+        if tryout is None:
+            raise HTTPException(status_code=404, detail="Tryout not found")
+        
+        return {
+            "tryout_id": tryout_id,
+            "tryout_name": tryout["title"],
+            "amount": tryout["price"],
+            "bank": BANK,
+            "account_number": ACCOUNT_NUMBER
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/transactions/", response_model=list[schema.Transaction])
 async def get_transactions(skip: int = 0, limit: int = 100):
     try:
